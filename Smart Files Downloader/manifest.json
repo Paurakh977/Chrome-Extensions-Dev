@@ -6,7 +6,8 @@
   "permissions": [
     "downloads",
     "downloads.shelf",
-    "system.display"
+    "system.display",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"
