@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Smart Download Organizer",
+  "version": "1.0",
+  "description": "Automatically organizes downloads into appropriate folders based on file type",
+  "permissions": [
+    "downloads",
+    "downloads.shelf",
+    "system.display"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
