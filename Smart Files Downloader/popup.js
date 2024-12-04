@@ -28,6 +28,43 @@ async function listDriveFolders() {
   return data.files;
 }
 
+// Function to get file extension and handle Google Docs types
+function getFileDetails(file) {
+  // Handle Google Workspace files
+  if (file.mimeType.includes('application/vnd.google-apps.')) {
+    switch (file.mimeType) {
+      case 'application/vnd.google-apps.document':
+        return { extension: 'doc', category: 'Documents' };
+      case 'application/vnd.google-apps.spreadsheet':
+        return { extension: 'xlsx', category: 'Documents' };
+      case 'application/vnd.google-apps.presentation':
+        return { extension: 'ppt', category: 'Documents' };
+      default:
+        return { extension: 'gdoc', category: 'Documents' };
+    }
+  }
+
+  // For regular files
+  const fileName = file.name;
+  const fileExtension = fileName.split('.').pop().toLowerCase();
+  const category = determineFileCategory(file.mimeType, fileExtension);
+  
+  return { extension: fileExtension, category: category };
+}
+
+// Function to find existing folder by name and parent
+async function findFolder(name, parentId, token) {
+  const query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${query}`,
+    {
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
+  const data = await response.json();
+  return data.files?.[0] || null;
+}
+
 // Function to organize files in a folder
 async function organizeFolder(folderId) {
   const token = await getAuthToken();
@@ -35,93 +72,47 @@ async function organizeFolder(folderId) {
   status.textContent = "Organizing files...";
 
   try {
-    // Get all files with detailed information
+    // Special query for root folder
+    const query = folderId === "root" 
+      ? "parents in 'root' and mimeType != 'application/vnd.google-apps.folder'"
+      : `"${folderId}" in parents and mimeType != 'application/vnd.google-apps.folder'`;
+
+    // Get all files
     const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q="${folderId}" in parents and mimeType != 'application/vnd.google-apps.folder'&fields=files(id,name,mimeType,parents)&pageSize=1000`,
+      `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType,parents)&pageSize=1000`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       }
     );
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Failed to fetch files: ${error.message}`);
-    }
-
     const data = await response.json();
-    console.log("Files fetched:", data.files);
-
     const files = data.files;
-    if (!files || files.length === 0) {
+
+    if (!files?.length) {
       status.textContent = "No files found to organize!";
       return;
     }
 
     // Group files by category and extension
     const fileGroups = {};
-    
     for (const file of files) {
-      if (file.mimeType === "application/vnd.google-apps.folder") continue;
-
-      const fileName = file.name;
-      const fileExtension = fileName.split('.').pop().toLowerCase();
-      const category = determineFileCategory(file.mimeType, fileExtension);
-      
-      if (category) {
-        if (!fileGroups[category]) {
-          fileGroups[category] = {};
-        }
-        if (!fileGroups[category][fileExtension]) {
-          fileGroups[category][fileExtension] = [];
-        }
-        fileGroups[category][fileExtension].push(file);
-      }
+      const { extension, category } = getFileDetails(file);
+      if (!fileGroups[category]) fileGroups[category] = {};
+      if (!fileGroups[category][extension]) fileGroups[category][extension] = [];
+      fileGroups[category][extension].push(file);
     }
 
     // Process each category
     for (const category in fileGroups) {
-      if (Object.keys(fileGroups[category]).length === 0) continue;
+      status.textContent = `Processing ${category} files...`;
+      console.log(`Processing category: ${category}`);
 
-      status.textContent = `Creating ${category} folder...`;
-      console.log(`Creating category folder: ${category}`);
-
-      // Create category folder
-      const categoryFolderResponse = await fetch(
-        "https://www.googleapis.com/drive/v3/files",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: category,
-            mimeType: "application/vnd.google-apps.folder",
-            parents: [folderId]
-          })
-        }
-      );
-
-      if (!categoryFolderResponse.ok) {
-        const error = await categoryFolderResponse.json();
-        throw new Error(`Failed to create category folder: ${error.message}`);
-      }
-
-      const categoryFolder = await categoryFolderResponse.json();
-      console.log(`Created category folder with ID: ${categoryFolder.id}`);
-
-      // Process each extension
-      for (const extension in fileGroups[category]) {
-        const files = fileGroups[category][extension];
-        if (files.length === 0) continue;
-
-        status.textContent = `Creating ${extension} folder...`;
-        console.log(`Creating extension folder: ${extension}`);
-
-        // Create extension subfolder
-        const extensionFolderResponse = await fetch(
+      // Find or create category folder
+      let categoryFolder = await findFolder(category, folderId, token);
+      
+      if (!categoryFolder) {
+        console.log(`Creating new ${category} folder`);
+        const createResponse = await fetch(
           "https://www.googleapis.com/drive/v3/files",
           {
             method: "POST",
@@ -130,30 +121,53 @@ async function organizeFolder(folderId) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              name: extension,
+              name: category,
               mimeType: "application/vnd.google-apps.folder",
-              parents: [categoryFolder.id]
+              parents: [folderId]
             })
           }
         );
+        categoryFolder = await createResponse.json();
+      } else {
+        console.log(`Found existing ${category} folder`);
+      }
 
-        if (!extensionFolderResponse.ok) {
-          const error = await extensionFolderResponse.json();
-          throw new Error(`Failed to create extension folder: ${error.message}`);
+      // Process each extension
+      for (const extension in fileGroups[category]) {
+        const files = fileGroups[category][extension];
+        if (!files.length) continue;
+
+        status.textContent = `Processing ${extension} files in ${category}...`;
+        
+        // Find or create extension subfolder
+        let extensionFolder = await findFolder(extension, categoryFolder.id, token);
+        
+        if (!extensionFolder) {
+          console.log(`Creating new ${extension} subfolder in ${category}`);
+          const createResponse = await fetch(
+            "https://www.googleapis.com/drive/v3/files",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name: extension,
+                mimeType: "application/vnd.google-apps.folder",
+                parents: [categoryFolder.id]
+              })
+            }
+          );
+          extensionFolder = await createResponse.json();
+        } else {
+          console.log(`Found existing ${extension} subfolder in ${category}`);
         }
 
-        const extensionFolder = await extensionFolderResponse.json();
-        console.log(`Created extension folder with ID: ${extensionFolder.id}`);
-
-        // Move each file
+        // Move files to extension folder
         for (const file of files) {
           status.textContent = `Moving ${file.name}...`;
-          console.log(`Attempting to move file:`, {
-            fileName: file.name,
-            fileId: file.id,
-            currentParents: file.parents,
-            targetFolder: extensionFolder.id
-          });
+          console.log(`Moving ${file.name} to ${category}/${extension}/`);
           
           try {
             const moveResponse = await fetch(
@@ -167,16 +181,11 @@ async function organizeFolder(folderId) {
               }
             );
 
-            const moveResult = await moveResponse.json();
-            console.log('Move response:', moveResult);
-
             if (!moveResponse.ok) {
-              throw new Error(`Move failed: ${moveResult.error?.message || 'Unknown error'}`);
+              throw new Error(`Failed to move ${file.name}`);
             }
-
-            console.log(`Successfully moved file: ${file.name}`);
           } catch (moveError) {
-            console.error(`Detailed error moving file ${file.name}:`, moveError);
+            console.error(`Error moving ${file.name}:`, moveError);
             status.textContent = `Error moving ${file.name}: ${moveError.message}`;
           }
         }
@@ -190,53 +199,137 @@ async function organizeFolder(folderId) {
   }
 }
 
-// Updated function to determine file category using both MIME type and extension
+// File type mapping (same as background.js)
+const fileTypeMap = {
+  // Images
+  jpg: "Images", jpeg: "Images", png: "Images", gif: "Images",
+  webp: "Images", svg: "Images", tiff: "Images", bmp: "Images",
+  ico: "Images", raw: "Images", heic: "Images",
+
+  // Documents
+  pdf: "Documents", doc: "Documents", docx: "Documents",
+  txt: "Documents", xlsx: "Documents", csv: "Documents",
+  xls: "Documents", ppt: "Documents", pptx: "Documents",
+  odt: "Documents", rtf: "Documents", tex: "Documents",
+  wpd: "Documents", md: "Documents", epub: "Documents",
+  mobi: "Documents",
+
+  // Videos
+  mp4: "Videos", mkv: "Videos", avi: "Videos",
+  mov: "Videos", wmv: "Videos", flv: "Videos",
+  webm: "Videos", m4v: "Videos", "3gp": "Videos",
+  mpeg: "Videos", mpg: "Videos",
+
+  // Audio
+  mp3: "Music", wav: "Music", m4a: "Music",
+  flac: "Music", aac: "Music", ogg: "Music",
+  wma: "Music", aiff: "Music", opus: "Music",
+  mid: "Music", midi: "Music",
+
+  // Archives
+  zip: "Archives", rar: "Archives", "7z": "Archives",
+  tar: "Archives", gz: "Archives", bz2: "Archives",
+  xz: "Archives", tgz: "Archives", cab: "Archives",
+
+  // Executables and Installers
+  exe: "Software", msi: "Software", dmg: "Software",
+  app: "Software", deb: "Software", rpm: "Software",
+  iso: "Software", pkg: "Software", apk: "Software",
+
+  // Web Files
+  html: "Web", htm: "Web", css: "Web",
+  js: "Web", json: "Web", xml: "Web"
+};
+
+// MIME type mapping (same as background.js)
+const mimeTypeMap = {
+  // Images
+  "image/jpeg": "Images",
+  "image/png": "Images",
+  "image/gif": "Images",
+  "image/webp": "Images",
+  "image/svg+xml": "Images",
+  "image/tiff": "Images",
+  "image/bmp": "Images",
+  "image/x-icon": "Images",
+  "image/heic": "Images",
+
+  // Documents
+  "application/pdf": "Documents",
+  "application/msword": "Documents",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Documents",
+  "text/plain": "Documents",
+  "application/vnd.ms-excel": "Documents",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Documents",
+  "application/vnd.oasis.opendocument.text": "Documents",
+  "application/rtf": "Documents",
+  "text/markdown": "Documents",
+  "application/epub+zip": "Documents",
+
+  // Videos
+  "video/mp4": "Videos",
+  "video/x-matroska": "Videos",
+  "video/x-msvideo": "Videos",
+  "video/quicktime": "Videos",
+  "video/webm": "Videos",
+  "video/3gpp": "Videos",
+  "video/mpeg": "Videos",
+
+  // Audio
+  "audio/mpeg": "Music",
+  "audio/wav": "Music",
+  "audio/ogg": "Music",
+  "audio/flac": "Music",
+  "audio/aac": "Music",
+  "audio/midi": "Music",
+  "audio/webm": "Music",
+
+  // Archives
+  "application/zip": "Archives",
+  "application/x-rar-compressed": "Archives",
+  "application/x-7z-compressed": "Archives",
+  "application/x-tar": "Archives",
+  "application/gzip": "Archives",
+  "application/x-bzip2": "Archives",
+  "application/x-compressed": "Archives",
+
+  // Executables
+  "application/x-msdownload": "Software",
+  "application/x-msi": "Software",
+  "application/x-apple-diskimage": "Software",
+  "application/vnd.debian.binary-package": "Software",
+  "application/x-rpm": "Software",
+  "application/vnd.android.package-archive": "Software",
+
+  // Web Files
+  "text/html": "Web",
+  "text/css": "Web",
+  "text/javascript": "Web",
+  "application/javascript": "Web",
+  "application/json": "Web",
+  "application/xml": "Web",
+  "text/xml": "Web"
+};
+
+// Updated function to determine file category
 function determineFileCategory(mimeType, fileExtension) {
   // First check for HTML files specifically
-  if (
-    mimeType === "text/html" ||
-    fileExtension === "html" ||
-    fileExtension === "htm"
-  ) {
+  if (mimeType === "text/html" || fileExtension === "html" || fileExtension === "htm") {
     return "Web";
   }
 
   // Then try to determine by MIME type
-  if (mimeType.startsWith("image/")) return "Images";
-  if (mimeType.startsWith("video/")) return "Videos";
-  if (mimeType.startsWith("audio/")) return "Music";
-  if (mimeType.includes("pdf") || 
-      mimeType.includes("document") ||
-      mimeType.includes("text/")) return "Documents";
-  if (mimeType.includes("zip") || 
-      mimeType.includes("compressed") ||
-      mimeType.includes("archive")) return "Archives";
+  if (mimeTypeMap[mimeType]) {
+    return mimeTypeMap[mimeType];
+  }
 
-  // Fall back to extension if MIME type is not conclusive
-  const extensionMap = {
-    // Images
-    jpg: "Images", jpeg: "Images", png: "Images", gif: "Images",
-    webp: "Images", svg: "Images", tiff: "Images", bmp: "Images",
-    
-    // Documents
-    pdf: "Documents", doc: "Documents", docx: "Documents",
-    txt: "Documents", xlsx: "Documents", xls: "Documents",
-    ppt: "Documents", pptx: "Documents",
-    
-    // Videos
-    mp4: "Videos", mkv: "Videos", avi: "Videos",
-    mov: "Videos", wmv: "Videos", flv: "Videos",
-    
-    // Audio
-    mp3: "Music", wav: "Music", m4a: "Music",
-    flac: "Music", aac: "Music", ogg: "Music",
-    
-    // Archives
-    zip: "Archives", rar: "Archives", "7z": "Archives",
-    tar: "Archives", gz: "Archives"
-  };
+  // Fall back to extension if MIME type is not recognized
+  if (fileTypeMap[fileExtension]) {
+    return fileTypeMap[fileExtension];
+  }
 
-  return extensionMap[fileExtension] || "Others";
+  // Return default type if neither is recognized
+  return "Others";
 }
 
 // Event Listeners
