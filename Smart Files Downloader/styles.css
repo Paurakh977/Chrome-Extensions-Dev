@@ -1,26 +1,38 @@
 :root {
-    --primary-color: #4285f4;
-    --hover-color: #1a73e8;
-    --error-color: #dc3545;
-    --success-color: #28a745;
-    --background-color: #f8f9fa;
-    --text-color: #202124;
-    --border-color: #dadce0;
+    --primary-color: rgba(66, 133, 244, 0.9);
+    --hover-color: rgba(26, 115, 232, 0.95);
+    --error-color: rgba(220, 53, 69, 0.9);
+    --success-color: rgba(40, 167, 69, 0.9);
+    --background-color: rgba(248, 249, 250, 0.7);
+    --text-color: rgba(32, 33, 36, 0.9);
+    --border-color: rgba(218, 220, 224, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.25);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
 }
 
 body {
     width: 350px;
     padding: 20px;
     font-family: 'Google Sans', Arial, sans-serif;
-    background-color: var(--background-color);
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(219, 68, 55, 0.1));
     color: var(--text-color);
     margin: 0;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .container {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    background: var(--glass-bg);
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 .header {
@@ -29,7 +41,7 @@ body {
     gap: 10px;
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .header-icon {
@@ -47,22 +59,25 @@ body {
     padding: 12px 16px;
     border: none;
     border-radius: 8px;
-    background-color: var(--primary-color);
+    background: var(--primary-color);
     color: white;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .button:hover {
-    background-color: var(--hover-color);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    background: var(--hover-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
 }
 
 .button:active {
@@ -76,11 +91,12 @@ body {
 .folder-list {
     max-height: 300px;
     overflow-y: auto;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
     margin-top: 10px;
-    scrollbar-width: thin;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 .folder-list::-webkit-scrollbar {
@@ -99,14 +115,10 @@ body {
 
 .folder-item {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--glass-border);
     cursor: pointer;
     transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    animation: slideIn 0.3s ease-out;
-    animation-fill-mode: both;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .folder-item:last-child {
@@ -114,7 +126,7 @@ body {
 }
 
 .folder-item:hover {
-    background-color: #f1f3f4;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .folder-item i {
@@ -124,15 +136,17 @@ body {
 #status {
     margin-top: 15px;
     padding: 16px;
-    border-radius: 8px;
-    background-color: white;
-    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     font-size: 14px;
     display: none;
     opacity: 0;
     transform: translateY(-10px);
     transition: all 0.3s ease;
     min-height: 24px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 #status.show {
@@ -155,9 +169,7 @@ body {
     font-weight: 500;
     text-align: center;
     animation: floatText 2s ease-in-out infinite, colorChange 3s linear infinite;
-    padding: 4px 8px;
-    width: auto;
-    display: inline-block;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 #status.success,
@@ -180,15 +192,13 @@ body {
 }
 
 #status.success {
-    color: var(--success-color);
-    background-color: #d4edda;
-    border-color: #c3e6cb;
+    background: rgba(40, 167, 69, 0.2);
+    border-color: rgba(40, 167, 69, 0.3);
 }
 
 #status.error {
-    color: var(--error-color);
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
+    background: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.3);
 }
 
 #status.loading:after {
@@ -197,9 +207,15 @@ body {
     bottom: 0;
     left: 0;
     height: 2px;
-    background: var(--primary-color);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--primary-color),
+        transparent
+    );
     animation: progress 2s ease-in-out infinite;
     width: 0;
+    border-radius: 2px;
 }
 
 @keyframes floatText {
@@ -212,10 +228,10 @@ body {
 }
 
 @keyframes colorChange {
-    0% { color: var(--primary-color); }
-    33% { color: #2ecc71; }
-    66% { color: #9b59b6; }
-    100% { color: var(--primary-color); }
+    0% { color: rgba(66, 133, 244, 1); }
+    33% { color: rgba(46, 204, 113, 1); }
+    66% { color: rgba(155, 89, 182, 1); }
+    100% { color: rgba(66, 133, 244, 1); }
 }
 
 @keyframes progress {
