@@ -69,7 +69,7 @@ async function findFolder(name, parentId, token) {
 async function organizeFolder(folderId) {
   const token = await getAuthToken();
   const status = document.getElementById("status");
-  status.textContent = "Organizing files...";
+  updateStatus("Organizing files...", "loading");
 
   try {
     // Special query for root folder
@@ -89,7 +89,7 @@ async function organizeFolder(folderId) {
     const files = data.files;
 
     if (!files?.length) {
-      status.textContent = "No files found to organize!";
+      updateStatus("No files found to organize!", "info");
       return;
     }
 
@@ -104,7 +104,7 @@ async function organizeFolder(folderId) {
 
     // Process each category
     for (const category in fileGroups) {
-      status.textContent = `Processing ${category} files...`;
+      updateStatus(`Processing ${category} files...`, "loading");
       console.log(`Processing category: ${category}`);
 
       // Find or create category folder
@@ -137,7 +137,7 @@ async function organizeFolder(folderId) {
         const files = fileGroups[category][extension];
         if (!files.length) continue;
 
-        status.textContent = `Processing ${extension} files in ${category}...`;
+        updateStatus(`Processing ${extension} files in ${category}...`, "loading");
         
         // Find or create extension subfolder
         let extensionFolder = await findFolder(extension, categoryFolder.id, token);
@@ -166,7 +166,7 @@ async function organizeFolder(folderId) {
 
         // Move files to extension folder
         for (const file of files) {
-          status.textContent = `Moving ${file.name}...`;
+          updateStatus(`Moving ${file.name}...`, "loading");
           console.log(`Moving ${file.name} to ${category}/${extension}/`);
           
           try {
@@ -186,15 +186,15 @@ async function organizeFolder(folderId) {
             }
           } catch (moveError) {
             console.error(`Error moving ${file.name}:`, moveError);
-            status.textContent = `Error moving ${file.name}: ${moveError.message}`;
+            updateStatus(`Error moving ${file.name}: ${moveError.message}`, "error");
           }
         }
       }
     }
 
-    status.textContent = "Files organized successfully!";
+    updateStatus("Files organized successfully!", "success");
   } catch (error) {
-    status.textContent = "Error: " + error.message;
+    updateStatus(error.message, "error");
     console.error("Organization error:", error);
   }
 }
@@ -356,3 +356,37 @@ document.getElementById("selectFolder").addEventListener("click", async () => {
     folderList.innerHTML = "Error loading folders: " + error.message;
   }
 });
+
+// Add this function at the top
+function updateStatus(message, type = 'info') {
+    const status = document.getElementById('status');
+    
+    // Show the status div
+    status.classList.add('show');
+    status.className = `show ${type}`;
+    
+    if (type === 'loading') {
+        status.innerHTML = `
+            <div class="progress-text">${message}</div>
+        `;
+    } else {
+        status.innerHTML = `
+            <i class="material-icons" aria-hidden="true">${getStatusIcon(type)}</i>
+            <div class="message">${message}</div>
+        `;
+        
+        if (type === 'success' || type === 'error') {
+            setTimeout(() => {
+                status.classList.remove('show');
+            }, 3000);
+        }
+    }
+}
+
+function getStatusIcon(type) {
+    switch(type) {
+        case 'success': return 'check_circle';
+        case 'error': return 'error';
+        default: return 'info';
+    }
+}

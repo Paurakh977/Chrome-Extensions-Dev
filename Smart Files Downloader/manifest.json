@@ -3,7 +3,7 @@
   "name": "Smart Download Organizer",
   "version": "1.0",
   "description": "Automatically organizes downloads and Google Drive files based on file type. Helps users keep their files organized in both local downloads and Google Drive.",
-  
+
   "permissions": [
     "downloads",
     "downloads.shelf",
@@ -11,17 +11,13 @@
     "notifications",
     "identity"
   ],
-  "host_permissions": [
-    "https://www.googleapis.com/*",
-    "<all_urls>"
-  ],
+  "host_permissions": ["https://www.googleapis.com/*", "<all_urls>"],
   "oauth2": {
     "client_id": "521130360268-6h5jfebivs02t1u585rkkh5n1k1dujtk.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/drive.metadata",
       "https://www.googleapis.com/auth/drive"
-      
     ]
   },
   "background": {

@@ -2,52 +2,29 @@
 <html>
 <head>
     <title>Drive File Organizer</title>
-    <style>
-        body {
-            width: 300px;
-            padding: 15px;
-            font-family: Arial, sans-serif;
-        }
-        .button {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .button:hover {
-            background-color: #357abd;
-        }
-        .folder-list {
-            max-height: 200px;
-            overflow-y: auto;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            padding: 5px;
-        }
-        .folder-item {
-            padding: 5px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        .folder-item:hover {
-            background-color: #f5f5f5;
-        }
-        #status {
-            margin-top: 10px;
-            color: #666;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
-    <h3>Google Drive Organizer</h3>
-    <button id="organizeRoot" class="button">Organize My Drive Files</button>
-    <button id="selectFolder" class="button">Select Folder to Organize</button>
-    <div id="folderList" class="folder-list" style="display: none;"></div>
-    <div id="status"></div>
+    <div class="container">
+        <div class="header">
+            <img src="icon48.png" alt="Logo" class="header-icon">
+            <h1>Drive File Organizer</h1>
+        </div>
+
+        <button id="organizeRoot" class="button">
+            <i class="material-icons">drive_folder_upload</i>
+            Organize My Drive Files
+        </button>
+
+        <button id="selectFolder" class="button">
+            <i class="material-icons">folder_open</i>
+            Select Folder to Organize
+        </button>
+
+        <div id="folderList" class="folder-list" style="display: none;"></div>
+        <div id="status"></div>
+    </div>
     <script src="popup.js"></script>
 </body>
 </html>
