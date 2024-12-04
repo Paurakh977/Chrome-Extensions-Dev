@@ -13,7 +13,7 @@
   ],
   "host_permissions": ["https://www.googleapis.com/*", "<all_urls>"],
   "oauth2": {
-    "client_id": "521130360268-6h5jfebivs02t1u585rkkh5n1k1dujtk.apps.googleusercontent.com",
+    "client_id": "",
     "scopes": [
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/drive.metadata",
